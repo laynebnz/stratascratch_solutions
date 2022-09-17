@@ -1,0 +1,15 @@
+select tb2.actual_distance_per_dollar,tb2.forecast_distance_per_dollar, round(SQRT(Avg( POWER(tb2.actual_distance_per_dollar - tb2.forecast_distance_per_dollar , 2) ) )::numeric,2) as RSME, tb2.request_month
+from
+(select 
+    tb.distance_to_travel as distance_to_travel, 
+    tb.monetary_cost as monetary_cost, 
+    cast(tb.distance_to_travel as decimal) / tb.monetary_cost as actual_distance_per_dollar, 
+    LAG(cast(tb.distance_to_travel as decimal) / tb.monetary_cost,1) OVER (
+		ORDER BY request_month
+	) forecast_distance_per_dollar,
+    tb.request_month as request_month
+from (select sum(distance_to_travel) as distance_to_travel, sum(monetary_cost) as monetary_cost, date_trunc('month',request_date) as request_month from uber_request_logs
+    group by date_trunc('month',request_date))tb
+order by request_month)tb2
+group by tb2.request_month,tb2.actual_distance_per_dollar,tb2.forecast_distance_per_dollar
+order by tb2.request_month;
